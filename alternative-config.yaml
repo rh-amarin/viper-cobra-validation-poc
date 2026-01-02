@@ -1,0 +1,3 @@
+app:
+  name: "alternative-app-from-file"
+  notexisting: value
