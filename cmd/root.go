@@ -11,7 +11,10 @@ import (
 	"github.com/spf13/viper"
 )
 
-var cfgFile string
+var (
+	cfgFile string
+	v       *viper.Viper
+)
 
 var rootCmd = &cobra.Command{
 	Use:   "cobra-viper-demo",
@@ -33,6 +36,7 @@ func Execute() {
 }
 
 func init() {
+	v = viper.New()
 	cobra.OnInitialize(initConfig)
 
 	// Define flags
@@ -60,19 +64,19 @@ func init() {
 	rootCmd.Flags().StringP("log-format", "f", "", "Logging format")
 
 	// Bind flags to viper
-	viper.BindPFlag("app.name", rootCmd.Flags().Lookup("app-name"))
-	viper.BindPFlag("app.version", rootCmd.Flags().Lookup("app-version"))
-	viper.BindPFlag("app.environment", rootCmd.Flags().Lookup("app-environment"))
-	viper.BindPFlag("server.host", rootCmd.Flags().Lookup("server-host"))
-	viper.BindPFlag("server.port", rootCmd.Flags().Lookup("server-port"))
-	viper.BindPFlag("server.timeout", rootCmd.Flags().Lookup("server-timeout"))
-	viper.BindPFlag("database.host", rootCmd.Flags().Lookup("db-host"))
-	viper.BindPFlag("database.port", rootCmd.Flags().Lookup("db-port"))
-	viper.BindPFlag("database.username", rootCmd.Flags().Lookup("db-username"))
-	viper.BindPFlag("database.password", rootCmd.Flags().Lookup("db-password"))
-	viper.BindPFlag("database.name", rootCmd.Flags().Lookup("db-name"))
-	viper.BindPFlag("logging.level", rootCmd.Flags().Lookup("log-level"))
-	viper.BindPFlag("logging.format", rootCmd.Flags().Lookup("log-format"))
+	v.BindPFlag("app.name", rootCmd.Flags().Lookup("app-name"))
+	v.BindPFlag("app.version", rootCmd.Flags().Lookup("app-version"))
+	v.BindPFlag("app.environment", rootCmd.Flags().Lookup("app-environment"))
+	v.BindPFlag("server.host", rootCmd.Flags().Lookup("server-host"))
+	v.BindPFlag("server.port", rootCmd.Flags().Lookup("server-port"))
+	v.BindPFlag("server.timeout", rootCmd.Flags().Lookup("server-timeout"))
+	v.BindPFlag("database.host", rootCmd.Flags().Lookup("db-host"))
+	v.BindPFlag("database.port", rootCmd.Flags().Lookup("db-port"))
+	v.BindPFlag("database.username", rootCmd.Flags().Lookup("db-username"))
+	v.BindPFlag("database.password", rootCmd.Flags().Lookup("db-password"))
+	v.BindPFlag("database.name", rootCmd.Flags().Lookup("db-name"))
+	v.BindPFlag("logging.level", rootCmd.Flags().Lookup("log-level"))
+	v.BindPFlag("logging.format", rootCmd.Flags().Lookup("log-format"))
 }
 
 func initConfig() {
@@ -82,28 +86,28 @@ func initConfig() {
 	// 3. Default search paths
 	if cfgFile != "" {
 		// Use config file from the flag
-		viper.SetConfigFile(cfgFile)
+		v.SetConfigFile(cfgFile)
 	} else if envConfigFile := os.Getenv("MYAPP_CONFIG"); envConfigFile != "" {
 		// Use config file from environment variable
-		viper.SetConfigFile(envConfigFile)
+		v.SetConfigFile(envConfigFile)
 	} else {
 		// Search for config in the current directory with name "config" (without extension)
-		viper.AddConfigPath(".")
-		viper.SetConfigName("config")
-		viper.SetConfigType("yaml")
+		v.AddConfigPath(".")
+		v.SetConfigName("config")
+		v.SetConfigType("yaml")
 	}
 
 	// Enable environment variable support
-	viper.SetEnvPrefix("MYAPP") // will be uppercased automatically
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.AutomaticEnv()
+	v.SetEnvPrefix("MYAPP") // will be uppercased automatically
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AutomaticEnv()
 
 	// Read the configuration file
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Printf("Using config file: %s\n\n", viper.ConfigFileUsed())
+	if err := v.ReadInConfig(); err == nil {
+		fmt.Printf("Using config file: %s\n\n", v.ConfigFileUsed())
 	} else {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			fmt.Println("No config file found, using flags and environment variables only\n")
+			fmt.Println("No config file found, using flags and environment variables only")
 		} else {
 			fmt.Fprintf(os.Stderr, "Error reading config file: %v\n\n", err)
 		}
@@ -113,7 +117,7 @@ func initConfig() {
 func displayConfiguration() {
 	// Unmarshal the configuration into the struct
 	var cfg config.Config
-	if err := viper.UnmarshalExact(&cfg); err != nil {
+	if err := v.UnmarshalExact(&cfg); err != nil {
 		fmt.Fprintf(os.Stderr, "Error unmarshaling config: %v\n", err)
 		return
 	}
