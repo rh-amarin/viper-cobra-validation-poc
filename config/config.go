@@ -5,9 +5,6 @@ type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
 	Database DatabaseConfig `mapstructure:"database"`
 	Logging  LoggingConfig  `mapstructure:"logging"`
-
-	// Extensions captures any additional configuration not defined in the struct
-	Extensions map[string]interface{} `mapstructure:",remain"`
 }
 
 type AppConfig struct {

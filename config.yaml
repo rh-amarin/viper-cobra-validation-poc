@@ -19,16 +19,3 @@ database:
 logging:
   level: "info"
   format: "json"
-
-# These are extensible fields - they'll be captured in the Extensions map
-features:
-  enable_metrics: true
-  enable_tracing: false
-  cache_ttl: 3600
-
-custom:
-  team: "platform"
-  region: "us-west-2"
-  tags:
-    - production
-    - critical

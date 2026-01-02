@@ -113,7 +113,7 @@ func initConfig() {
 func displayConfiguration() {
 	// Unmarshal the configuration into the struct
 	var cfg config.Config
-	if err := viper.Unmarshal(&cfg); err != nil {
+	if err := viper.UnmarshalExact(&cfg); err != nil {
 		fmt.Fprintf(os.Stderr, "Error unmarshaling config: %v\n", err)
 		return
 	}
@@ -223,26 +223,6 @@ func displayConfiguration() {
 	fmt.Println()
 
 	// Display extensible fields
-	if len(cfg.Extensions) > 0 {
-		fmt.Println("Extensions (dynamic fields):")
-		for key, value := range cfg.Extensions {
-			fmt.Printf("  %s: %v\n", key, value)
-		}
-		fmt.Println()
-
-		// Demonstrate helper methods for accessing nested values
-		fmt.Println("Accessing extension values with helper methods:")
-		if team, ok := cfg.GetExtensionString("custom", "team"); ok {
-			fmt.Printf("  custom.team: %s\n", team)
-		}
-		if enableMetrics, ok := cfg.GetExtensionBool("features", "enable_metrics"); ok {
-			fmt.Printf("  features.enable_metrics: %v\n", enableMetrics)
-		}
-		if cacheTTL, ok := cfg.GetExtensionInt("features", "cache_ttl"); ok {
-			fmt.Printf("  features.cache_ttl: %d\n", cacheTTL)
-		}
-		fmt.Println()
-	}
 
 	fmt.Println("=== Configuration Source Priority ===")
 	fmt.Println("1. Command-line flags (highest)")
