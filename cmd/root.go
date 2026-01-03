@@ -35,48 +35,57 @@ func Execute() {
 	}
 }
 
+// bindStringFlag defines a string flag and binds it to viper in one call
+func bindStringFlag(cmd *cobra.Command, viperKey, flagName, shorthand, defaultVal, usage string) {
+	cmd.Flags().StringP(flagName, shorthand, defaultVal, usage)
+	if err := v.BindPFlag(viperKey, cmd.Flags().Lookup(flagName)); err != nil {
+		panic(fmt.Sprintf("failed to bind flag %s to %s: %v", flagName, viperKey, err))
+	}
+}
+
+// bindIntFlag defines an int flag and binds it to viper in one call
+func bindIntFlag(cmd *cobra.Command, viperKey, flagName, shorthand string, defaultVal int, usage string) {
+	cmd.Flags().IntP(flagName, shorthand, defaultVal, usage)
+	if err := v.BindPFlag(viperKey, cmd.Flags().Lookup(flagName)); err != nil {
+		panic(fmt.Sprintf("failed to bind flag %s to %s: %v", flagName, viperKey, err))
+	}
+}
+
+// bindBoolFlag defines a bool flag and binds it to viper in one call
+func bindBoolFlag(cmd *cobra.Command, viperKey, flagName, shorthand string, defaultVal bool, usage string) {
+	cmd.Flags().BoolP(flagName, shorthand, defaultVal, usage)
+	if err := v.BindPFlag(viperKey, cmd.Flags().Lookup(flagName)); err != nil {
+		panic(fmt.Sprintf("failed to bind flag %s to %s: %v", flagName, viperKey, err))
+	}
+}
+
 func init() {
 	v = viper.New()
 	cobra.OnInitialize(initConfig)
 
-	// Define flags
+	// Config file flag (not bound to viper, handled separately)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is ./config.yaml)")
 
 	// Application flags
-	rootCmd.Flags().StringP("app-name", "n", "", "Application name")
-	rootCmd.Flags().StringP("app-version", "v", "", "Application version")
-	rootCmd.Flags().StringP("app-environment", "e", "", "Application environment")
+	bindStringFlag(rootCmd, "app.name", "app-name", "n", "", "Application name")
+	bindStringFlag(rootCmd, "app.version", "app-version", "v", "", "Application version")
+	bindStringFlag(rootCmd, "app.environment", "app-environment", "e", "", "Application environment")
 
 	// Server flags
-	rootCmd.Flags().StringP("server-host", "", "", "Server host")
-	rootCmd.Flags().IntP("server-port", "p", 0, "Server port")
-	rootCmd.Flags().IntP("server-timeout", "t", 0, "Server timeout in seconds")
+	bindStringFlag(rootCmd, "server.host", "server-host", "", "", "Server host")
+	bindIntFlag(rootCmd, "server.port", "server-port", "p", 0, "Server port")
+	bindIntFlag(rootCmd, "server.timeout", "server-timeout", "t", 0, "Server timeout in seconds")
 
 	// Database flags
-	rootCmd.Flags().StringP("db-host", "", "", "Database host")
-	rootCmd.Flags().IntP("db-port", "", 0, "Database port")
-	rootCmd.Flags().StringP("db-username", "u", "", "Database username")
-	rootCmd.Flags().StringP("db-password", "", "", "Database password")
-	rootCmd.Flags().StringP("db-name", "d", "", "Database name")
+	bindStringFlag(rootCmd, "database.host", "db-host", "", "", "Database host")
+	bindIntFlag(rootCmd, "database.port", "db-port", "", 0, "Database port")
+	bindStringFlag(rootCmd, "database.username", "db-username", "u", "", "Database username")
+	bindStringFlag(rootCmd, "database.password", "db-password", "", "", "Database password")
+	bindStringFlag(rootCmd, "database.name", "db-name", "d", "", "Database name")
 
 	// Logging flags
-	rootCmd.Flags().StringP("log-level", "l", "", "Logging level")
-	rootCmd.Flags().StringP("log-format", "f", "", "Logging format")
-
-	// Bind flags to viper
-	v.BindPFlag("app.name", rootCmd.Flags().Lookup("app-name"))
-	v.BindPFlag("app.version", rootCmd.Flags().Lookup("app-version"))
-	v.BindPFlag("app.environment", rootCmd.Flags().Lookup("app-environment"))
-	v.BindPFlag("server.host", rootCmd.Flags().Lookup("server-host"))
-	v.BindPFlag("server.port", rootCmd.Flags().Lookup("server-port"))
-	v.BindPFlag("server.timeout", rootCmd.Flags().Lookup("server-timeout"))
-	v.BindPFlag("database.host", rootCmd.Flags().Lookup("db-host"))
-	v.BindPFlag("database.port", rootCmd.Flags().Lookup("db-port"))
-	v.BindPFlag("database.username", rootCmd.Flags().Lookup("db-username"))
-	v.BindPFlag("database.password", rootCmd.Flags().Lookup("db-password"))
-	v.BindPFlag("database.name", rootCmd.Flags().Lookup("db-name"))
-	v.BindPFlag("logging.level", rootCmd.Flags().Lookup("log-level"))
-	v.BindPFlag("logging.format", rootCmd.Flags().Lookup("log-format"))
+	bindStringFlag(rootCmd, "logging.level", "log-level", "l", "", "Logging level")
+	bindStringFlag(rootCmd, "logging.format", "log-format", "f", "", "Logging format")
 }
 
 func initConfig() {
