@@ -124,19 +124,28 @@ func initConfig() {
 	}
 }
 
-func displayConfiguration() {
+// loadAndValidateConfig loads configuration from viper and validates it
+func loadAndValidateConfig() (*config.Config, error) {
 	// Unmarshal the configuration into the struct
 	var cfg config.Config
 	if err := v.UnmarshalExact(&cfg); err != nil {
-		fmt.Fprintf(os.Stderr, "Error unmarshaling config: %v\n", err)
-		return
+		return nil, fmt.Errorf("error unmarshaling config: %w", err)
 	}
 
 	// Validate the configuration
+	if err := validateConfig(&cfg); err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
+}
+
+// validateConfig validates the configuration struct and returns detailed error messages
+func validateConfig(cfg *config.Config) error {
 	validate := validator.New()
-	if err := validate.Struct(&cfg); err != nil {
-		fmt.Fprintln(os.Stderr, "Configuration validation failed:")
+	if err := validate.Struct(cfg); err != nil {
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
+			fmt.Fprintln(os.Stderr, "Configuration validation failed:")
 			for _, fieldErr := range validationErrors {
 				// Use Namespace to show the full path (e.g., "Config.Server.Port" instead of just "Port")
 				fieldPath := fieldErr.Namespace()
@@ -205,6 +214,16 @@ func displayConfiguration() {
 		} else {
 			fmt.Fprintf(os.Stderr, "  %v\n", err)
 		}
+		return err
+	}
+
+	return nil
+}
+
+// displayConfiguration loads, validates, and displays the configuration as JSON
+func displayConfiguration() {
+	cfg, err := loadAndValidateConfig()
+	if err != nil {
 		os.Exit(1)
 	}
 

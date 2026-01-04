@@ -2,12 +2,14 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/example/cobra-viper-demo/config"
 	"github.com/spf13/pflag"
 )
 
@@ -38,57 +40,129 @@ logging:
 		args           []string
 		envVars        map[string]string
 		configContent  string
-		expectedValues map[string]string
+		expectedConfig config.Config
 	}{
 		{
 			name:          "Config File Only",
 			args:          []string{},
 			envVars:       map[string]string{},
 			configContent: baseConfig,
-			expectedValues: map[string]string{
-				"Name:":    "ConfigAppName",
-				"Port:":    "8080",
-				"Host:":    "localhost",
+			expectedConfig: config.Config{
+				App: config.AppConfig{
+					Name:        "ConfigAppName",
+					Version:     "1.0.0",
+					Environment: "production",
+				},
+				Server: config.ServerConfig{
+					Host:    "localhost",
+					Port:    8080,
+					Timeout: 30,
+				},
+				Database: config.DatabaseConfig{
+					Host:     "db.local",
+					Port:     5432,
+					Username: "user",
+					Password: "password",
+					Name:     "dbname",
+				},
+				Logging: config.LoggingConfig{
+					Level:  "info",
+					Format: "json",
+				},
 			},
 		},
 		{
-			name:          "Environment Variable Override",
-			args:          []string{},
-			envVars:       map[string]string{
+			name: "Environment Variable Override",
+			args: []string{},
+			envVars: map[string]string{
 				"MYAPP_APP_NAME":    "EnvAppName",
 				"MYAPP_SERVER_PORT": "8081",
 			},
 			configContent: baseConfig,
-			expectedValues: map[string]string{
-				"Name:":    "EnvAppName",  // Env overrides config
-				"Port:":    "8081",        // Env overrides config
-				"Host:":    "localhost",   // From config (no env)
+			expectedConfig: config.Config{
+				App: config.AppConfig{
+					Name:        "EnvAppName", // Env overrides config
+					Version:     "1.0.0",
+					Environment: "production",
+				},
+				Server: config.ServerConfig{
+					Host:    "localhost",
+					Port:    8081, // Env overrides config
+					Timeout: 30,
+				},
+				Database: config.DatabaseConfig{
+					Host:     "db.local",
+					Port:     5432,
+					Username: "user",
+					Password: "password",
+					Name:     "dbname",
+				},
+				Logging: config.LoggingConfig{
+					Level:  "info",
+					Format: "json",
+				},
 			},
 		},
 		{
-			name:          "Flag Override",
-			args:          []string{"--app-name=FlagAppName", "--server-port=8082"},
-			envVars:       map[string]string{
+			name: "Flag Override",
+			args: []string{"--app-name=FlagAppName", "--server-port=8082"},
+			envVars: map[string]string{
 				"MYAPP_APP_NAME": "EnvAppName", // Flag should override this
 			},
 			configContent: baseConfig,
-			expectedValues: map[string]string{
-				"Name:":    "FlagAppName", // Flag overrides Env & Config
-				"Port:":    "8082",        // Flag overrides Config
-				"Host:":    "localhost",   // From config
+			expectedConfig: config.Config{
+				App: config.AppConfig{
+					Name:        "FlagAppName", // Flag overrides Env & Config
+					Version:     "1.0.0",
+					Environment: "production",
+				},
+				Server: config.ServerConfig{
+					Host:    "localhost",
+					Port:    8082, // Flag overrides Config
+					Timeout: 30,
+				},
+				Database: config.DatabaseConfig{
+					Host:     "db.local",
+					Port:     5432,
+					Username: "user",
+					Password: "password",
+					Name:     "dbname",
+				},
+				Logging: config.LoggingConfig{
+					Level:  "info",
+					Format: "json",
+				},
 			},
 		},
 		{
-			name:          "Mixed Priorities",
-			args:          []string{"--server-host=flag-host"},
-			envVars:       map[string]string{
+			name: "Mixed Priorities",
+			args: []string{"--server-host=flag-host"},
+			envVars: map[string]string{
 				"MYAPP_APP_NAME": "EnvAppName",
 			},
 			configContent: baseConfig,
-			expectedValues: map[string]string{
-				"Name:":    "EnvAppName",  // Env > Config
-				"Host:":    "flag-host",   // Flag > Config
-				"Port:":    "8080",        // Config (no flag/env)
+			expectedConfig: config.Config{
+				App: config.AppConfig{
+					Name:        "EnvAppName", // Env > Config
+					Version:     "1.0.0",
+					Environment: "production",
+				},
+				Server: config.ServerConfig{
+					Host:    "flag-host", // Flag > Config
+					Port:    8080,        // Config (no flag/env)
+					Timeout: 30,
+				},
+				Database: config.DatabaseConfig{
+					Host:     "db.local",
+					Port:     5432,
+					Username: "user",
+					Password: "password",
+					Name:     "dbname",
+				},
+				Logging: config.LoggingConfig{
+					Level:  "info",
+					Format: "json",
+				},
 			},
 		},
 	}
@@ -135,11 +209,11 @@ logging:
 			// But our tests are happy paths.
 			// However, Execute() captures errors and prints to stderr usually.
 			// We can call rootCmd.ExecuteC() or just Execute()
-			
+
 			// Note: init() has already run. initConfig is registered.
-			
+
 			err = rootCmd.Execute()
-			
+
 			// Close and Restore Stdout
 			w.Close()
 			os.Stdout = oldStdout
@@ -153,27 +227,37 @@ logging:
 			io.Copy(&buf, r)
 			output := buf.String()
 
-			// Assertions
-			for key, val := range tt.expectedValues {
-				if !containsConfigValue(output, key, val) {
-					t.Errorf("Expected configuration to contain '%s %s', but it didn't.\nOutput:\n%s", key, val, output)
-				}
+			// Extract JSON from output (skip any messages before the JSON)
+			// Find the first '{' which marks the start of JSON
+			jsonStart := strings.Index(output, "{")
+			if jsonStart == -1 {
+				t.Fatalf("No JSON found in output:\n%s", output)
+			}
+			jsonOutput := output[jsonStart:]
+
+			// Parse JSON output
+			var actualConfig config.Config
+			if err := json.Unmarshal([]byte(jsonOutput), &actualConfig); err != nil {
+				t.Fatalf("Failed to parse JSON output: %v\nJSON part:\n%s", err, jsonOutput)
+			}
+
+			// Assertions - verify key fields match expected values
+			if actualConfig.App.Name != tt.expectedConfig.App.Name {
+				t.Errorf("Expected App.Name=%s, got %s", tt.expectedConfig.App.Name, actualConfig.App.Name)
+			}
+			if actualConfig.Server.Port != tt.expectedConfig.Server.Port {
+				t.Errorf("Expected Server.Port=%d, got %d", tt.expectedConfig.Server.Port, actualConfig.Server.Port)
+			}
+			if actualConfig.Server.Host != tt.expectedConfig.Server.Host {
+				t.Errorf("Expected Server.Host=%s, got %s", tt.expectedConfig.Server.Host, actualConfig.Server.Host)
+			}
+			// Verify other fields for completeness
+			if actualConfig.App.Version != tt.expectedConfig.App.Version {
+				t.Errorf("Expected App.Version=%s, got %s", tt.expectedConfig.App.Version, actualConfig.App.Version)
+			}
+			if actualConfig.App.Environment != tt.expectedConfig.App.Environment {
+				t.Errorf("Expected App.Environment=%s, got %s", tt.expectedConfig.App.Environment, actualConfig.App.Environment)
 			}
 		})
 	}
-}
-
-// containsConfigValue checks if the output contains a line roughly matching "Key: Value"
-// This is a simple check tailored to the displayConfiguration output format
-func containsConfigValue(output, key, value string) bool {
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, key) {
-			if strings.Contains(trimmed, value) {
-				return true
-			}
-		}
-	}
-	return false
 }
