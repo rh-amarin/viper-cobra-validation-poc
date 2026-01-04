@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -207,38 +208,12 @@ func displayConfiguration() {
 		os.Exit(1)
 	}
 
-	fmt.Println("=== Configuration Values ===")
-	fmt.Println()
+	// Marshal configuration to JSON with indentation
+	jsonData, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error marshaling config to JSON: %v\n", err)
+		return
+	}
 
-	fmt.Println("Application:")
-	fmt.Printf("  Name:        %s\n", cfg.App.Name)
-	fmt.Printf("  Version:     %s\n", cfg.App.Version)
-	fmt.Printf("  Environment: %s\n", cfg.App.Environment)
-	fmt.Println()
-
-	fmt.Println("Server:")
-	fmt.Printf("  Host:    %s\n", cfg.Server.Host)
-	fmt.Printf("  Port:    %d\n", cfg.Server.Port)
-	fmt.Printf("  Timeout: %d seconds\n", cfg.Server.Timeout)
-	fmt.Println()
-
-	fmt.Println("Database:")
-	fmt.Printf("  Host:     %s\n", cfg.Database.Host)
-	fmt.Printf("  Port:     %d\n", cfg.Database.Port)
-	fmt.Printf("  Username: %s\n", cfg.Database.Username)
-	fmt.Printf("  Password: %s\n", cfg.Database.Password)
-	fmt.Printf("  Name:     %s\n", cfg.Database.Name)
-	fmt.Println()
-
-	fmt.Println("Logging:")
-	fmt.Printf("  Level:  %s\n", cfg.Logging.Level)
-	fmt.Printf("  Format: %s\n", cfg.Logging.Format)
-	fmt.Println()
-
-	// Display extensible fields
-
-	fmt.Println("=== Configuration Source Priority ===")
-	fmt.Println("1. Command-line flags (highest)")
-	fmt.Println("2. Environment variables (MYAPP_* prefix)")
-	fmt.Println("3. Configuration file (lowest)")
+	fmt.Println(string(jsonData))
 }
